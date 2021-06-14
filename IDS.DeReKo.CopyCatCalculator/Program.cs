@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Hyldahl.Hashing.SpamSum;
-using Newtonsoft.Json;
 
 namespace IDS.DeReKo.CopyCatCalculator
 {
@@ -14,7 +13,8 @@ namespace IDS.DeReKo.CopyCatCalculator
     static void Main(string[] args)
     {
       var baseDir = args[0];
-      var searchFiles = Directory.GetFiles(baseDir, args[1]);
+      var minimum = int.Parse(args[1]);
+      var searchFiles = Directory.GetFiles(baseDir, args[2]);
 
       var searchQueries = searchFiles.Select(ReadCorpusExplorerOutput)
                                      .SelectMany(tmp => tmp)
@@ -23,51 +23,37 @@ namespace IDS.DeReKo.CopyCatCalculator
       var allFiles = Directory.GetFiles(baseDir, "*.tsv");
       var filter = new HashSet<string>(searchFiles);
 
-      var giffeys = new Dictionary<Guid, Dictionary<string, Dictionary<Guid, int>>>();
       var @lock = new object();
-
-      Parallel.ForEach(allFiles, file =>
-      {
-        if (filter.Contains(file))
-          return;
-
-        var content = ReadCorpusExplorerOutput(file);
-        foreach (var c in content)
+      using (var fs = new FileStream(args[3], FileMode.Create, FileAccess.Write))
+      using (var bf = new BufferedStream(fs, 4096))
+      using (var writer = new StreamWriter(bf))
+        Parallel.ForEach(allFiles, file =>
         {
-          foreach (var s in searchQueries)
+          if (filter.Contains(file))
+            return;
+
+          Console.WriteLine($">>> {file}");
+
+          var content = ReadCorpusExplorerOutput(file);
+          foreach (var c in content)
           {
-            var size = FuzzyHashing.Compare(c.Value, s.Value);
-            if (size < 95)
-              continue;
+            foreach (var s in searchQueries)
+            {
+              var size = FuzzyHashing.Compare(c.Value, s.Value);
+              if (size < minimum)
+                continue;
 
-            lock (@lock)
-              if (giffeys.ContainsKey(s.Key))
-              {
-                if (giffeys[s.Key].ContainsKey(file))
-                  giffeys[s.Key][file].Add(c.Key, size);
-                else
-                  giffeys[s.Key].Add(file, new Dictionary<Guid, int>
-                {
-                  {c.Key, size}
-                });
-              }
-              else
-              {
-                giffeys.Add(s.Key, new Dictionary<string, Dictionary<Guid, int>>
-              {
-                {
-                  file, new Dictionary<Guid, int>
-                  {
-                    {c.Key, size}
-                  }
-                }
-              });
-              }
+              lock (@lock)
+                writer.WriteLine(string.Join("\t", 
+                                             s.Key.ToString("N"), 
+                                             size.ToString(),
+                                             file, 
+                                             c.Key));
+            }
           }
-        }
-      });
 
-      File.WriteAllText(Path.Combine(baseDir + ".json"), JsonConvert.SerializeObject(giffeys), Encoding.UTF8);
+          Console.WriteLine($"<<< {file}");
+        });
     }
 
     private static Dictionary<Guid, SpamSumSignature> ReadCorpusExplorerOutput(string path)
