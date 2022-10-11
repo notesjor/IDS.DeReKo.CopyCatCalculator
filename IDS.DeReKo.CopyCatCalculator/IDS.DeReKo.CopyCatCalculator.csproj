@@ -5,4 +5,8 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="..\..\..\CorpusExplorerV2\CorpusExplorer\CorpusExplorer.Sdk\Helper\Splitter.cs" Link="Splitter.cs" />
+  </ItemGroup>
+
 </Project>

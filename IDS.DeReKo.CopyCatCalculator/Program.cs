@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CorpusExplorer.Sdk.Helper;
 
 namespace IDS.DeReKo.CopyCatCalculator
 {
@@ -91,7 +92,7 @@ namespace IDS.DeReKo.CopyCatCalculator
         reader.ReadLine();
         while (!reader.EndOfStream)
         {
-          var cells = reader.ReadLine()?.Split(new[] { "\t" }, StringSplitOptions.RemoveEmptyEntries);
+          var cells = reader.ReadLine()?.Split(Splitter.Tab, StringSplitOptions.RemoveEmptyEntries);
           if (cells.Length != 2)
             continue;
           try
